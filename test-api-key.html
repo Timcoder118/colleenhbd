@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API密钥测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1d1d1f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e5e5e7;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            color: #007aff;
+            margin-top: 0;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 DeepSeek API密钥测试页面</h1>
+        
+        <div class="test-section">
+            <h3>1. 保存API密钥</h3>
+            <input type="text" id="api-key-input" placeholder="请输入您的DeepSeek API密钥 (sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)">
+            <button onclick="saveApiKey()">保存到localStorage</button>
+            <div id="save-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 读取API密钥</h3>
+            <button onclick="loadApiKey()">从localStorage读取</button>
+            <div id="load-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 清除API密钥</h3>
+            <button onclick="clearApiKey()">清除localStorage中的密钥</button>
+            <div id="clear-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 检查localStorage状态</h3>
+            <button onclick="checkLocalStorage()">检查所有localStorage内容</button>
+            <div id="storage-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 测试主页面API密钥加载</h3>
+            <button onclick="testMainPage()">测试主页面API密钥功能</button>
+            <div id="main-test-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 保存API密钥
+        function saveApiKey() {
+            const input = document.getElementById('api-key-input');
+            const key = input.value.trim();
+            
+            if (!key) {
+                showResult('save-result', '请输入API密钥', 'error');
+                return;
+            }
+            
+            if (!key.startsWith('sk-')) {
+                showResult('save-result', 'API密钥格式不正确，应该以sk-开头', 'error');
+                return;
+            }
+            
+            try {
+                localStorage.setItem('deepseek_api_key', key);
+                showResult('save-result', `✅ API密钥已成功保存到localStorage！密钥长度: ${key.length}`, 'success');
+                console.log('API密钥已保存:', key);
+            } catch (error) {
+                showResult('save-result', `❌ 保存失败: ${error.message}`, 'error');
+                console.error('保存API密钥失败:', error);
+            }
+        }
+        
+        // 读取API密钥
+        function loadApiKey() {
+            try {
+                const key = localStorage.getItem('deepseek_api_key');
+                if (key) {
+                    showResult('load-result', `✅ 成功读取API密钥！密钥: ${key.substring(0, 10)}...${key.substring(key.length - 4)}`, 'success');
+                    console.log('读取到的API密钥:', key);
+                } else {
+                    showResult('load-result', '❌ 未找到API密钥', 'error');
+                }
+            } catch (error) {
+                showResult('load-result', `❌ 读取失败: ${error.message}`, 'error');
+                console.error('读取API密钥失败:', error);
+            }
+        }
+        
+        // 清除API密钥
+        function clearApiKey() {
+            try {
+                localStorage.removeItem('deepseek_api_key');
+                showResult('clear-result', '✅ API密钥已从localStorage中清除', 'success');
+                console.log('API密钥已清除');
+            } catch (error) {
+                showResult('clear-result', `❌ 清除失败: ${error.message}`, 'error');
+                console.error('清除API密钥失败:', error);
+            }
+        }
+        
+        // 检查localStorage状态
+        function checkLocalStorage() {
+            try {
+                const allKeys = Object.keys(localStorage);
+                const deepseekKey = localStorage.getItem('deepseek_api_key');
+                
+                let result = `<strong>localStorage中的所有键:</strong><br>`;
+                allKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    result += `• ${key}: ${value ? '已设置' : '未设置'}<br>`;
+                });
+                
+                result += `<br><strong>DeepSeek API密钥状态:</strong><br>`;
+                if (deepseekKey) {
+                    result += `✅ 已设置 (长度: ${deepseekKey.length})<br>`;
+                    result += `密钥内容: ${deepseekKey.substring(0, 10)}...${deepseekKey.substring(deepseekKey.length - 4)}`;
+                } else {
+                    result += `❌ 未设置`;
+                }
+                
+                showResult('storage-result', result, 'info');
+            } catch (error) {
+                showResult('storage-result', `❌ 检查失败: ${error.message}`, 'error');
+                console.error('检查localStorage失败:', error);
+            }
+        }
+        
+        // 测试主页面API密钥功能
+        function testMainPage() {
+            try {
+                // 模拟主页面的API密钥加载逻辑
+                const apiKey = localStorage.getItem('deepseek_api_key');
+                console.log('模拟主页面加载API密钥:', apiKey ? '已找到' : '未找到');
+                
+                if (!apiKey) {
+                    showResult('main-test-result', '❌ 主页面会显示"需要DeepSeek API密钥"提示，因为localStorage中没有密钥', 'error');
+                } else {
+                    showResult('main-test-result', '✅ 主页面应该能正常加载API密钥，不会显示提示框', 'success');
+                }
+            } catch (error) {
+                showResult('main-test-result', `❌ 测试失败: ${error.message}`, 'error');
+                console.error('测试主页面功能失败:', error);
+            }
+        }
+        
+        // 显示结果
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = `result ${type}`;
+        }
+        
+        // 页面加载时自动检查localStorage状态
+        window.addEventListener('load', () => {
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>

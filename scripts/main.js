@@ -11,7 +11,253 @@ class DailyWisdomApp {
         console.log('DailyWisdomApp 构造函数被调用');
         this.currentQuote = null;
         this.isLoading = false;
+        this.favorites = this.loadFavorites(); // 加载收藏列表
         this.init();
+    }
+
+    // 加载收藏列表
+    loadFavorites() {
+        const saved = localStorage.getItem('daily_wisdom_favorites');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    // 保存收藏列表
+    saveFavorites() {
+        localStorage.setItem('daily_wisdom_favorites', JSON.stringify(this.favorites));
+    }
+
+    // 添加收藏
+    addToFavorites(quote) {
+        if (!this.favorites.find(fav => fav.text === quote.text)) {
+            this.favorites.push({
+                ...quote,
+                addedAt: new Date().toISOString()
+            });
+            this.saveFavorites();
+            this.showToast('已添加到收藏', 'success');
+            this.updateFavoriteButton();
+        } else {
+            this.showToast('已经在收藏中了', 'info');
+        }
+    }
+
+    // 移除收藏
+    removeFromFavorites(quote) {
+        this.favorites = this.favorites.filter(fav => fav.text !== quote.text);
+        this.saveFavorites();
+        this.showToast('已从收藏中移除', 'success');
+        this.updateFavoriteButton();
+    }
+
+    // 检查是否已收藏
+    isFavorite(quote) {
+        return this.favorites.find(fav => fav.text === quote.text);
+    }
+
+    // 更新收藏按钮状态
+    updateFavoriteButton() {
+        const favoriteBtn = document.getElementById('favorite-btn');
+        if (favoriteBtn && this.currentQuote) {
+            const isFav = this.isFavorite(this.currentQuote);
+            favoriteBtn.classList.toggle('favorited', isFav);
+            favoriteBtn.innerHTML = isFav ? 
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>已收藏' :
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>收藏';
+        }
+    }
+
+    // 切换收藏状态
+    toggleFavorite() {
+        if (!this.currentQuote) return;
+        
+        if (this.isFavorite(this.currentQuote)) {
+            this.removeFromFavorites(this.currentQuote);
+        } else {
+            this.addToFavorites(this.currentQuote);
+        }
+    }
+
+    // 分享名句
+    shareQuote() {
+        if (!this.currentQuote) return;
+
+        const shareText = `${this.currentQuote.text}\n\n——${this.currentQuote.source}\n\n来自：每日经典智慧网站`;
+        const shareUrl = window.location.href;
+
+        // 尝试使用原生分享API
+        if (navigator.share) {
+            navigator.share({
+                title: '每日经典智慧',
+                text: shareText,
+                url: shareUrl
+            }).catch(err => {
+                console.log('原生分享失败，使用备用方案:', err);
+                this.showShareOptions(shareText, shareUrl);
+            });
+        } else {
+            // 备用分享方案
+            this.showShareOptions(shareText, shareUrl);
+        }
+    }
+
+    // 显示分享选项
+    showShareOptions(shareText, shareUrl) {
+        const modal = document.createElement('div');
+        modal.className = 'share-modal';
+        modal.innerHTML = `
+            <div class="share-content">
+                <div class="share-header">
+                    <h3>分享智慧</h3>
+                    <button class="close-share">✕</button>
+                </div>
+                <div class="share-text">
+                    <p>${shareText}</p>
+                </div>
+                <div class="share-actions">
+                    <button class="share-action copy-text" data-text="${shareText}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        复制文本
+                    </button>
+                    <button class="share-action copy-url" data-url="${shareUrl}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        复制链接
+                    </button>
+                    <a href="https://weibo.com/share?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('每日经典智慧')}" target="_blank" class="share-action weibo-share">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                        微博分享
+                    </a>
+                    <a href="https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('每日经典智慧')}&desc=${encodeURIComponent(shareText)}" target="_blank" class="share-action qq-share">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                        </svg>
+                        QQ分享
+                    </a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 绑定事件
+        modal.querySelector('.close-share').onclick = () => modal.remove();
+        modal.querySelector('.copy-text').onclick = () => {
+            this.copyToClipboard(shareText);
+            this.showToast('文本已复制到剪贴板', 'success');
+        };
+        modal.querySelector('.copy-url').onclick = () => {
+            this.copyToClipboard(shareUrl);
+            this.showToast('链接已复制到剪贴板', 'success');
+        };
+
+        // 点击外部关闭
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+    }
+
+    // 复制到剪贴板
+    copyToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('复制成功');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                this.fallbackCopyToClipboard(text);
+            });
+        } else {
+            this.fallbackCopyToClipboard(text);
+        }
+    }
+
+    // 备用复制方法
+    fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            console.log('备用复制成功');
+        } catch (err) {
+            console.error('备用复制失败:', err);
+        }
+        
+        document.body.removeChild(textArea);
+    }
+
+    // 显示收藏列表
+    showFavorites() {
+        if (this.favorites.length === 0) {
+            this.showToast('还没有收藏任何名句', 'info');
+            return;
+        }
+
+        // 创建收藏列表弹窗
+        const modal = document.createElement('div');
+        modal.className = 'favorites-modal';
+        modal.innerHTML = `
+            <div class="favorites-content">
+                <div class="favorites-header">
+                    <h3>我的收藏 (${this.favorites.length})</h3>
+                    <button class="close-favorites">✕</button>
+                </div>
+                <div class="favorites-list">
+                    ${this.favorites.map((fav, index) => `
+                        <div class="favorite-item" data-index="${index}">
+                            <div class="favorite-text">${fav.text}</div>
+                            <div class="favorite-source">${fav.source}</div>
+                            <div class="favorite-actions">
+                                <button class="view-favorite" data-index="${index}">查看</button>
+                                <button class="remove-favorite" data-index="${index}">删除</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 绑定事件
+        modal.querySelector('.close-favorites').onclick = () => modal.remove();
+        modal.querySelectorAll('.view-favorite').forEach(btn => {
+            btn.onclick = (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const quote = this.favorites[index];
+                this.displayQuote(quote);
+                modal.remove();
+            };
+        });
+        modal.querySelectorAll('.remove-favorite').forEach(btn => {
+            btn.onclick = (e) => {
+                const index = parseInt(e.target.dataset.index);
+                this.favorites.splice(index, 1);
+                this.saveFavorites();
+                this.showToast('已从收藏中移除', 'success');
+                this.showFavorites(); // 刷新列表
+            };
+        });
+
+        // 点击外部关闭
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
     }
 
     // 初始化应用
@@ -29,6 +275,24 @@ class DailyWisdomApp {
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refreshQuote());
+        }
+
+        // 收藏按钮事件
+        const favoriteBtn = document.getElementById('favorite-btn');
+        if (favoriteBtn) {
+            favoriteBtn.addEventListener('click', () => this.toggleFavorite());
+        }
+
+        // 收藏列表按钮事件
+        const favoritesListBtn = document.getElementById('favorites-list-btn');
+        if (favoritesListBtn) {
+            favoritesListBtn.addEventListener('click', () => this.showFavorites());
+        }
+
+        // 分享按钮事件
+        const shareBtn = document.getElementById('share-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.shareQuote());
         }
 
         // 分类筛选按钮事件
@@ -56,6 +320,12 @@ class DailyWisdomApp {
                     searchInput.focus();
                     searchInput.select();
                 }
+            }
+
+            // Ctrl/Cmd + D 收藏当前名句
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                this.toggleFavorite();
             }
         });
     }
@@ -154,6 +424,7 @@ class DailyWisdomApp {
         if (category === 'all') {
             // 显示所有名句，恢复今日名句
             this.displayTodayQuote();
+            this.applyTheme('default');
         } else {
             // 筛选特定分类的名句
             const filteredQuotes = getQuotesByCategory(category);
@@ -164,9 +435,67 @@ class DailyWisdomApp {
                 this.updateQuoteDisplay();
                 this.animateQuoteCard();
                 this.showSuccessMessage(`已切换到${category}分类`);
+                this.applyTheme(category);
             } else {
                 this.showError(`未找到${category}分类的名句`);
             }
+        }
+    }
+
+    // 应用主题色彩
+    applyTheme(category) {
+        const root = document.documentElement;
+        const quoteCard = document.querySelector('.quote-card');
+        
+        // 移除所有主题类
+        if (quoteCard) {
+            quoteCard.classList.remove('theme-dao', 'theme-fo', 'theme-ru', 'theme-chu', 'theme-xue', 'theme-tang');
+        }
+
+        // 根据分类应用主题
+        switch (category) {
+            case '道家':
+                if (quoteCard) quoteCard.classList.add('theme-dao');
+                root.style.setProperty('--theme-primary', '#8B4513'); // 棕色
+                root.style.setProperty('--theme-secondary', '#D2691E'); // 巧克力色
+                root.style.setProperty('--theme-accent', '#F4A460'); // 沙褐色
+                break;
+            case '佛家':
+                if (quoteCard) quoteCard.classList.add('theme-fo');
+                root.style.setProperty('--theme-primary', '#9932CC'); // 紫色
+                root.style.setProperty('--theme-secondary', '#BA55D3'); // 兰花紫
+                root.style.setProperty('--theme-accent', '#DDA0DD'); // 梅红色
+                break;
+            case '儒家':
+                if (quoteCard) quoteCard.classList.add('theme-ru');
+                root.style.setProperty('--theme-primary', '#8B0000'); // 深红色
+                root.style.setProperty('--theme-secondary', '#DC143C'); // 深红色
+                root.style.setProperty('--theme-accent', '#FF6347'); // 番茄色
+                break;
+            case '处世':
+                if (quoteCard) quoteCard.classList.add('theme-chu');
+                root.style.setProperty('--theme-primary', '#228B22'); // 森林绿
+                root.style.setProperty('--theme-secondary', '#32CD32'); // 酸橙绿
+                root.style.setProperty('--theme-accent', '#90EE90'); // 浅绿色
+                break;
+            case '学习':
+                if (quoteCard) quoteCard.classList.add('theme-xue');
+                root.style.setProperty('--theme-primary', '#1E90FF'); // 道奇蓝
+                root.style.setProperty('--theme-secondary', '#4169E1'); // 皇家蓝
+                root.style.setProperty('--theme-accent', '#87CEEB'); // 天蓝色
+                break;
+            case '唐诗宋词':
+                if (quoteCard) quoteCard.classList.add('theme-tang');
+                root.style.setProperty('--theme-primary', '#DAA520'); // 金黄色
+                root.style.setProperty('--theme-secondary', '#FFD700'); // 金色
+                root.style.setProperty('--theme-accent', '#F0E68C'); // 卡其色
+                break;
+            default:
+                // 默认主题
+                root.style.setProperty('--theme-primary', 'var(--primary-color)');
+                root.style.setProperty('--theme-secondary', 'var(--secondary-color)');
+                root.style.setProperty('--theme-accent', 'var(--accent-color)');
+                break;
         }
     }
 
@@ -190,10 +519,28 @@ class DailyWisdomApp {
         // 模拟加载延迟，提供更好的用户体验
         setTimeout(() => {
             try {
-                this.currentQuote = getRandomQuote();
+                // 检查当前是否在分类模式下
+                const activeCategory = document.querySelector('.filter-btn.active');
+                if (activeCategory && activeCategory.dataset.category && activeCategory.dataset.category !== 'all') {
+                    // 在分类模式下，从该分类中随机选择
+                    const category = activeCategory.dataset.category;
+                    const filteredQuotes = getQuotesByCategory(category);
+                    if (filteredQuotes.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
+                        this.currentQuote = filteredQuotes[randomIndex];
+                        this.showSuccessMessage(`已在${category}分类中更新名句`);
+                    } else {
+                        this.showError(`未找到${category}分类的名句`);
+                        return;
+                    }
+                } else {
+                    // 不在分类模式下，从所有名句中随机选择
+                    this.currentQuote = getRandomQuote();
+                    this.showSuccessMessage('已更新名句');
+                }
+                
                 this.updateQuoteDisplay();
                 this.animateQuoteCard();
-                this.showSuccessMessage('已更新名句');
             } catch (error) {
                 console.error('刷新名句失败:', error);
                 this.showError('刷新失败，请重试');
@@ -224,6 +571,9 @@ class DailyWisdomApp {
         if (quoteInterpretation) {
             quoteInterpretation.textContent = this.currentQuote.interpretation;
         }
+
+        // 更新收藏按钮状态
+        this.updateFavoriteButton();
 
         // 配图功能已移除，保持界面简洁
 

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试页面 - 配置状态检查</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        .debug-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 配置调试页面</h1>
+    
+    <div class="debug-card">
+        <h2>📋 配置状态检查</h2>
+        <div id="config-status"></div>
+        <button onclick="checkConfig()">🔄 重新检查配置</button>
+        <button onclick="clearCache()">🗑️ 清除浏览器缓存</button>
+    </div>
+
+    <div class="debug-card">
+        <h2>🔑 API密钥状态</h2>
+        <div id="api-status"></div>
+        <button onclick="testApiKey()">🧪 测试API密钥</button>
+    </div>
+
+    <div class="debug-card">
+        <h2>📝 详细配置信息</h2>
+        <pre id="config-details"></pre>
+    </div>
+
+    <div class="debug-card">
+        <h2>🧪 功能测试</h2>
+        <div class="test-section">
+            <h3>聊天管理器测试</h3>
+            <button onclick="testChatManager()">测试聊天管理器初始化</button>
+            <div id="chat-test-result"></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // 配置状态检查
+        function checkConfig() {
+            const statusDiv = document.getElementById('config-status');
+            const detailsDiv = document.getElementById('config-details');
+            
+            let status = '';
+            let details = '';
+            
+            // 检查配置文件是否加载
+            if (window.CONFIG) {
+                status += '<div class="status success">✅ 配置文件已加载</div>';
+                details += 'window.CONFIG 存在\n';
+                
+                if (window.CONFIG.deepseek) {
+                    status += '<div class="status success">✅ DeepSeek配置已加载</div>';
+                    details += 'DeepSeek配置: ' + JSON.stringify(window.CONFIG.deepseek, null, 2) + '\n';
+                } else {
+                    status += '<div class="status error">❌ DeepSeek配置未找到</div>';
+                }
+                
+                if (window.CONFIG.deepseek && window.CONFIG.deepseek.apiKey) {
+                    const key = window.CONFIG.deepseek.apiKey;
+                    if (key.startsWith('sk-') && key.length > 20) {
+                        status += '<div class="status success">✅ API密钥格式正确</div>';
+                        status += '<div class="status info">🔑 API密钥: ' + key.substring(0, 10) + '...' + key.substring(key.length - 4) + '</div>';
+                    } else {
+                        status += '<div class="status warning">⚠️ API密钥格式可能不正确</div>';
+                    }
+                } else {
+                    status += '<div class="status error">❌ API密钥未配置</div>';
+                }
+            } else {
+                status += '<div class="status error">❌ 配置文件未加载</div>';
+                details += 'window.CONFIG 未定义\n';
+            }
+            
+            // 检查localStorage
+            const storedKey = localStorage.getItem('deepseek_api_key');
+            if (storedKey) {
+                status += '<div class="status info">💾 localStorage中有API密钥</div>';
+                details += 'localStorage API密钥: ' + storedKey.substring(0, 10) + '...' + storedKey.substring(storedKey.length - 4) + '\n';
+            } else {
+                status += '<div class="status info">💾 localStorage中无API密钥</div>';
+            }
+            
+            statusDiv.innerHTML = status;
+            detailsDiv.textContent = details;
+        }
+
+        // API密钥状态检查
+        function checkApiStatus() {
+            const statusDiv = document.getElementById('api-status');
+            
+            let status = '';
+            
+            if (window.CONFIG && window.CONFIG.deepseek) {
+                const config = window.CONFIG.deepseek;
+                
+                if (config.usePreconfiguredKey) {
+                    status += '<div class="status success">✅ 使用预配置的API密钥</div>';
+                } else {
+                    status += '<div class="status warning">⚠️ 未使用预配置的API密钥</div>';
+                }
+                
+                if (config.showPromptOnLoad) {
+                    status += '<div class="status warning">⚠️ 页面加载时会显示API密钥提示</div>';
+                } else {
+                    status += '<div class="status success">✅ 页面加载时不会显示API密钥提示</div>';
+                }
+            }
+            
+            statusDiv.innerHTML = status;
+        }
+
+        // 测试API密钥
+        async function testApiKey() {
+            const resultDiv = document.getElementById('api-status');
+            
+            if (!window.CONFIG || !window.CONFIG.deepseek || !window.CONFIG.deepseek.apiKey) {
+                resultDiv.innerHTML += '<div class="status error">❌ 无法测试：API密钥未配置</div>';
+                return;
+            }
+            
+            const apiKey = window.CONFIG.deepseek.apiKey;
+            resultDiv.innerHTML += '<div class="status info">🧪 正在测试API密钥...</div>';
+            
+            try {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [{
+                            role: 'user',
+                            content: '你好，请回复"测试成功"'
+                        }],
+                        max_tokens: 10
+                    })
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML += '<div class="status success">✅ API密钥测试成功</div>';
+                } else {
+                    resultDiv.innerHTML += '<div class="status error">❌ API密钥测试失败: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML += '<div class="status error">❌ API密钥测试出错: ' + error.message + '</div>';
+            }
+        }
+
+        // 测试聊天管理器
+        function testChatManager() {
+            const resultDiv = document.getElementById('chat-test-result');
+            
+            try {
+                // 模拟创建聊天管理器
+                if (window.CONFIG && window.CONFIG.deepseek) {
+                    resultDiv.innerHTML = '<div class="status success">✅ 配置已就绪，可以创建聊天管理器</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="status error">❌ 配置未就绪，无法创建聊天管理器</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="status error">❌ 测试出错: ' + error.message + '</div>';
+            }
+        }
+
+        // 清除缓存
+        function clearCache() {
+            localStorage.clear();
+            sessionStorage.clear();
+            location.reload();
+        }
+
+        // 页面加载完成后自动检查
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                checkConfig();
+                checkApiStatus();
+            }, 100);
+        });
+    </script>
+</body>
+</html>
